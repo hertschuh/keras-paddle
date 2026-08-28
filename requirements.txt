@@ -1,0 +1,10 @@
+# PaddlePaddle
+paddlepaddle
+
+# Testing
+pytest
+pytest-xdist
+
+# Linting
+pre-commit
+ruff
