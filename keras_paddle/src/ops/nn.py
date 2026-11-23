@@ -1597,3 +1597,62 @@ def polar(abs_, angle):
     from keras_paddle.src.ops.math import _get_complex_tensor_from_tuple
 
     return _get_complex_tensor_from_tuple((real, imag))
+
+
+def layer_normalization(
+    x, gamma=None, beta=None, axis=-1, epsilon=None, **kwargs
+):
+    rms_scaling = kwargs.pop("rms_scaling", False)
+    if rms_scaling:
+        import warnings
+
+        warnings.warn(
+            "You passed `rms_scaling=True`, which is deprecated. This "
+            "argument incorrectly scales the input by the variance, not "
+            "the root mean square. To correctly use RMS Normalization, "
+            "please use `keras.ops.rms_normalization` instead."
+        )
+    if epsilon is None:
+        from keras.src.backend.config import epsilon as _epsilon
+
+        epsilon = _epsilon()
+    original_dtype = standardize_dtype(x.dtype)
+    compute_dtype = result_type(x.dtype, "float32")
+    x = convert_to_tensor(x, dtype=compute_dtype)
+    if gamma is not None:
+        gamma = convert_to_tensor(gamma, x.dtype)
+    if beta is not None:
+        beta = convert_to_tensor(beta, x.dtype)
+
+    input_shape = x.shape
+    ndims = len(input_shape)
+    if isinstance(axis, int):
+        axis = [axis]
+    axis = sorted(axis)
+
+    broadcast_shape = [1] * ndims
+    for dim in axis:
+        broadcast_shape[dim] = input_shape[dim]
+
+    def _broadcast(v):
+        if v is not None and len(v.shape) != ndims and axis != [ndims - 1]:
+            return paddle.reshape(v, broadcast_shape)
+        return v
+
+    if rms_scaling:
+        variance = paddle.var(x, axis=axis, keepdim=True, unbiased=False)
+        inv = paddle.rsqrt(variance + epsilon)
+        outputs = x * inv
+        if gamma is not None:
+            outputs = outputs * cast(_broadcast(gamma), x.dtype)
+    else:
+        mean, variance = moments(x, axes=axis, keepdims=True)
+        gamma, beta = _broadcast(gamma), _broadcast(beta)
+        inv = paddle.rsqrt(variance + epsilon)
+        if gamma is not None:
+            inv = inv * gamma
+        res = -mean * inv
+        if beta is not None:
+            res = res + beta
+        outputs = x * inv + res
+    return cast(outputs, original_dtype)
