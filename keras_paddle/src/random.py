@@ -12,6 +12,10 @@ from keras_paddle.src.ops.core import needs_reduced_precision_upcast
 from keras_paddle.src.ops.core import to_paddle_dtype
 
 
+def random_seed_dtype():
+    return "int32"
+
+
 def _draw_seed_value(seed):
     """Draw a distinct integer seed for a single random op call.
 
