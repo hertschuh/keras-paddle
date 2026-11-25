@@ -869,8 +869,12 @@ def unstack(x, num=None, axis=0):
     return paddle.unbind(x, axis)
 
 
+# For backwards compatibility, will be removed
+# https://github.com/keras-team/keras/issues/24352
 def random_seed_dtype():
-    return "int32"
+    from keras_paddle.src.random import seed_dtype
+
+    return seed_dtype()
 
 
 def remat(f):
